@@ -12,7 +12,7 @@ nltk.download('averaged_perceptron_tagger_eng')
 
 load_dotenv()
 
-## sstreamlit APP 
+## sstreamlit APP ##
 st.set_page_config(page_title="Langchain: Summerize Text From YT or Website",page_icon="🦜")
 st.title("🦜 LangChain: Summarize Text From YT or Website")
 st.subheader('Summarize URL')
