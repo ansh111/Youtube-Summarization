@@ -8,6 +8,7 @@ import nltk
 from yt_dlp import YoutubeDL
 from langchain.schema import Document
 nltk.download('punkt_tab')
+nltk.download('averaged_perceptron_tagger_eng')
 
 load_dotenv()
 
@@ -16,10 +17,11 @@ st.set_page_config(page_title="Langchain: Summerize Text From YT or Website",pag
 st.title("🦜 LangChain: Summarize Text From YT or Website")
 st.subheader('Summarize URL')
 
-## Get the Groq API Key and url(YT or website)to be summarized
 
+## Get the Groq API Key and url(YT or website)to be summarized
+#groq_api_key=st.text_input("Groq API key", value=st.secrets["GROQ_API_KEY"], type="password")
 with st.sidebar:
-    groq_api_key=st.text_input("Groq API key", value="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", type="password")
+   groq_api_key=st.text_input("Groq API key", value="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", type="password")
 
 generic_url=st.text_input("URL", label_visibility= "collapsed")
 ## Gemma model
@@ -49,27 +51,28 @@ if st.button("Summarize the Content from YT or Website"):
     elif not validators.url(generic_url):
         st.error("Please enter a valid Url. It can may be a YT video utl or website url")
     else:
+        try:
             with st.spinner("Waiting.."):
                 if "youtube.com" in generic_url:
                      #loader = YoutubeLoader.from_youtube_url(generic_url, add_video_info=True)
                      text_content = load_youtube_content(generic_url)
-                     print(generic_url)
                      docs = [Document(page_content=text_content)]
-                
-                     
+               
                 else:
                     loader= UnstructuredURLLoader(urls=[generic_url],ssl_verify=False,
                                                    headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"})
 
                     docs=loader.load()  
-                print(docs)
-
+                    print(docs)
+            
                 ##chain for summerisation
                 chain=load_summarize_chain(llm,chain_type="stuff",prompt=prompt)
-                print(chain)
                 output=chain.run(docs)
 
                 st.success(output)   
+        except Exception as e:
+            st.exception(f"Exception:{e}")
+
 
 
 
