@@ -39,3 +39,4 @@ SQLAlchemy
 validator==0.7.1
 youtube_transcript_api
 unstructured
+yt-dlp
