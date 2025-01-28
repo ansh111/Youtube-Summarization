@@ -53,7 +53,7 @@ if st.button("Summarize the Content from YT or Website"):
     else:
         try:
             with st.spinner("Waiting.."):
-                if "youtube.com" in generic_url:
+                if "youtube.com" in generic_url or "youtu.be" in generic_url:
                      #loader = YoutubeLoader.from_youtube_url(generic_url, add_video_info=True)
                      text_content = load_youtube_content(generic_url)
                      docs = [Document(page_content=text_content)]
