@@ -29,17 +29,8 @@ with st.sidebar:
 
 generic_url=st.text_input("URL", label_visibility= "collapsed")
 ## Gemma model
-#llm =ChatGroq(model="gemma2-9b-it", groq_api_key=groq_api_key)
 llm =ChatGroq(model="gemma2-9b-it", groq_api_key=groq_api_key)
 
-
-def load_youtube_content(url):
-    ydl_opts = {'format': 'bestaudio/best', 'quiet': True}
-    with YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        title = info.get("title", "Video")
-        description = info.get("description", "No description available.")
-        return f"{title}\n\n{description}"
     
 def extract_video_id(url):
     # Regular expression to match YouTube video ID
@@ -133,8 +124,6 @@ if st.button("Summarize the Content from YT or Website"):
         try:
             with st.spinner("Waiting.."):
                 if "youtube.com" in generic_url or "youtu.be" in generic_url:
-                     #loader = YoutubeLoader.from_youtube_url(generic_url, add_video_info=True)
-                    # text_content = load_youtube_content(generic_url)
                     video_id = extract_video_id(generic_url)
                     text_content= get_video_transcript(video_id=video_id)
                     docs = [Document(page_content=text_content)]
@@ -144,7 +133,12 @@ if st.button("Summarize the Content from YT or Website"):
                                                    headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"})
                     docs=loader.load()  
             
+                print(docs[0].page_content)
+                if docs[0].page_content is None:
+                    docs[0].page_content = ""
+
                 ##chain for summerisation
+                
                 if(count_number_of_tokens(docs[0].page_content) < 6000):
                    output = get_summarization_with_stuff(docs)
                    print("stuff")
