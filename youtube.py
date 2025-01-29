@@ -43,11 +43,10 @@ def load_youtube_content(url):
     
 def extract_video_id(url):
     # Regular expression to match YouTube video ID
-    pattern = r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]+)'
+    pattern = r'(?:youtube\.com\/(?:v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})'
     
     # Search for the video ID in the URL
     match = re.search(pattern, url)
-    
     if match:
         return match.group(1)  # Return the video ID
     else:
