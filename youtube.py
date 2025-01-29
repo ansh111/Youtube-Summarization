@@ -133,7 +133,7 @@ if st.button("Summarize the Content from YT or Website"):
                                                    headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"})
                     docs=loader.load()  
             
-                print(docs[0].page_content)
+                st.write("Page content",docs[0].page_content)
                 if docs[0].page_content is None:
                     docs[0].page_content = ""
 
