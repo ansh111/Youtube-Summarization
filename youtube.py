@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 import nltk
 from yt_dlp import YoutubeDL
 from langchain.schema import Document
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.formatters import JSONFormatter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+import re
 nltk.download('punkt_tab')
 nltk.download('averaged_perceptron_tagger_eng')
 
@@ -26,7 +30,7 @@ with st.sidebar:
 generic_url=st.text_input("URL", label_visibility= "collapsed")
 ## Gemma model
 #llm =ChatGroq(model="gemma2-9b-it", groq_api_key=groq_api_key)
-llm =ChatGroq(model="llama-3.3-70b-versatile", groq_api_key=groq_api_key)
+llm =ChatGroq(model="gemma2-9b-it", groq_api_key=groq_api_key)
 
 
 def load_youtube_content(url):
@@ -36,13 +40,89 @@ def load_youtube_content(url):
         title = info.get("title", "Video")
         description = info.get("description", "No description available.")
         return f"{title}\n\n{description}"
+    
+def extract_video_id(url):
+    # Regular expression to match YouTube video ID
+    pattern = r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]+)'
+    
+    # Search for the video ID in the URL
+    match = re.search(pattern, url)
+    
+    if match:
+        return match.group(1)  # Return the video ID
+    else:
+        return None  # Return None if no match is found
+    
+def get_video_transcript(video_id):
+    try:
+        # Fetch the transcript for the video
+        transcript = YouTubeTranscriptApi.get_transcript(video_id,languages=['hi','en'])
 
-prompt_template="""
-Provide a summary of the following content in points having 500 words:
-Content:{text}
+         # Convert the transcript to a string format (plain text)
+        transcript_text = ""
+        for entry in transcript:
+            transcript_text += f"{entry['text']} "  # Combine all caption text with a space
+        
+        return transcript_text.strip()  # Remove any trailing spaces
 
-"""
-prompt=PromptTemplate(template=prompt_template,input_variables=["text"])
+    except Exception as e:
+        print(f"Error: {e}")    
+
+
+def get_summarization_with_map_reduce(docs):
+    try:
+        final_doc = RecursiveCharacterTextSplitter(chunk_size=6000,chunk_overlap=100).split_documents(docs)
+        print(final_doc)
+        chunks_prompt="""
+            Please summarize the below speech:
+            Speech:`{text}'
+            Summary:
+            """
+        map_prompt_template=PromptTemplate(input_variables=['text'],
+                                    template=chunks_prompt) 
+        prompt_template="""
+        Provide a summary of the following content in points having 500 words:
+        Content:{text}
+
+        """  
+        #not using for now but keeping as it is   
+        final_prompt='''
+            Provide the final summary of the entire speech with these important points.
+            Add a Motivation Title,Start the precise summary with an introduction and provide the summary in number 
+            points for the speech.
+            Speech:{text}
+            '''
+        final_prompt_template=PromptTemplate(input_variables=['text'],template=prompt_template)
+        summary_chain = load_summarize_chain(
+            llm = llm,
+            chain_type = "map_reduce",
+            map_prompt = map_prompt_template,
+            combine_prompt = final_prompt_template,
+            verbose=True
+         )
+        return summary_chain.run(final_doc)
+    except Exception as e:
+        print(f"Error: {e}")  
+
+
+def get_summarization_with_stuff(docs):
+    try:
+        prompt_template="""
+        Provide a summary of the following content in points having 500 words:
+        Content:{text}
+
+        """
+        prompt=PromptTemplate(template=prompt_template,input_variables=["text"])    
+        chain=load_summarize_chain(llm,chain_type="stuff",prompt=prompt)
+        return chain.invoke(docs)
+    except Exception as e:
+        print(f"Error: {e}")   
+
+
+def count_number_of_tokens(text):
+    # A rough estimation of token count (1 token ≈ 4 characters, you can adjust as needed)
+    return len(text)
+
 
 if st.button("Summarize the Content from YT or Website"):
     ## Validate all the inputs
@@ -55,19 +135,23 @@ if st.button("Summarize the Content from YT or Website"):
             with st.spinner("Waiting.."):
                 if "youtube.com" in generic_url or "youtu.be" in generic_url:
                      #loader = YoutubeLoader.from_youtube_url(generic_url, add_video_info=True)
-                     text_content = load_youtube_content(generic_url)
-                     docs = [Document(page_content=text_content)]
-               
+                    # text_content = load_youtube_content(generic_url)
+                    video_id = extract_video_id(generic_url)
+                    text_content= get_video_transcript(video_id=video_id)
+                    docs = [Document(page_content=text_content)]
+            
                 else:
                     loader= UnstructuredURLLoader(urls=[generic_url],ssl_verify=False,
                                                    headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"})
-
                     docs=loader.load()  
-                    print(docs)
             
                 ##chain for summerisation
-                chain=load_summarize_chain(llm,chain_type="stuff",prompt=prompt)
-                output=chain.run(docs)
+                if(count_number_of_tokens(docs[0].page_content) < 6000):
+                   output = get_summarization_with_stuff(docs)
+                   print("stuff")
+                else:
+                    output =get_summarization_with_map_reduce(docs)
+                    print("map_reduce")
 
                 st.success(output)   
         except Exception as e:
