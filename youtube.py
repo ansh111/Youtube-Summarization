@@ -26,6 +26,7 @@ st.subheader('Summarize URL')
 #groq_api_key=st.text_input("Groq API key", value=st.secrets["GROQ_API_KEY"], type="password")
 with st.sidebar:
    groq_api_key=st.text_input("Groq API key", value="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", type="password")
+   words = st.sidebar.slider("Choose number of words for summary", 0, 1000, 500)
 
 generic_url=st.text_input("URL", label_visibility= "collapsed")
 ## Gemma model
@@ -71,7 +72,7 @@ def get_summarization_with_map_reduce(docs):
         map_prompt_template=PromptTemplate(input_variables=['text'],
                                     template=chunks_prompt) 
         prompt_template="""
-        Provide a summary of the following content in points having 500 words:
+        Provide a summary of the following content in points having {words} words:
         Content:{text}
 
         """  
