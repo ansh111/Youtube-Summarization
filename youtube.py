@@ -27,6 +27,7 @@ st.subheader('Summarize URL')
 with st.sidebar:
    groq_api_key=st.text_input("Groq API key", value="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", type="password")
    words = st.sidebar.slider("Choose number of words for summary", 0, 1000, 500)
+   st.write(words)
 
 generic_url=st.text_input("URL", label_visibility= "collapsed")
 ## Gemma model
@@ -45,7 +46,6 @@ def extract_video_id(url):
         return None  # Return None if no match is found
     
 def get_video_transcript(video_id):
-    try:
         # Fetch the transcript for the video
         transcript = YouTubeTranscriptApi.get_transcript(video_id,languages=['hi','en'])
 
@@ -54,10 +54,7 @@ def get_video_transcript(video_id):
         for entry in transcript:
             transcript_text += f"{entry['text']} "  # Combine all caption text with a space
         
-        return transcript_text.strip()  # Remove any trailing spaces
-
-    except Exception as e:
-        print(f"Error: {e}")    
+        return transcript_text.strip()  # Remove any trailing spaces  
 
 
 def get_summarization_with_map_reduce(docs):
@@ -72,7 +69,7 @@ def get_summarization_with_map_reduce(docs):
         map_prompt_template=PromptTemplate(input_variables=['text'],
                                     template=chunks_prompt) 
         prompt_template="""
-        Provide a summary of the following content in points having {words} words:
+        Provide a summary of the following content in points having 500 words:
         Content:{text}
 
         """  
@@ -134,7 +131,6 @@ if st.button("Summarize the Content from YT or Website"):
                                                    headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"})
                     docs=loader.load()  
             
-                st.write("Page content",docs[0].page_content)
                 if docs[0].page_content is None:
                     docs[0].page_content = ""
 
