@@ -97,16 +97,16 @@ def get_summarization_with_map_reduce(docs, selected_language="English", words="
         print(f"Error: {e}")  
 
 
-def get_summarization_with_stuff(docs, selected_language="English"):
+def get_summarization_with_stuff(docs, selected_language="English",words="500"):
     try:
-        prompt_template="""
-        Provide a summary of the following content in points having 500 words in  {language}:
-        Content:{text}
+        prompt_template=f"""
+        Provide a summary of the following content in points having {words} words in  {selected_language}:
+        Content:{{text}}
 
         """
-        prompt=PromptTemplate(template=prompt_template,input_variables=["text","language"])    
+        prompt=PromptTemplate(template=prompt_template,input_variables=["text"])    
         chain=load_summarize_chain(llm,chain_type="stuff",prompt=prompt)
-        return chain.invoke(docs,selected_language)
+        return chain.invoke(docs)
     except Exception as e:
         print(f"Error: {e}")   
 
