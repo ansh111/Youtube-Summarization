@@ -25,9 +25,19 @@ st.subheader('Summarize URL')
 ## Get the Groq API Key and url(YT or website)to be summarized
 #groq_api_key=st.text_input("Groq API key", value=st.secrets["GROQ_API_KEY"], type="password")
 with st.sidebar:
+   st.title("Configurations") 
    groq_api_key=st.text_input("Groq API key", value="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", type="password")
    words = st.sidebar.slider("Choose number of words for summary", 0, 1000, 500)
-   st.write(words)
+   # Language selection dropdown in the sidebar
+   language_options = ["English", "Portuguese", "Hindi", "German", "Chinese"]
+   selected_language = st.sidebar.selectbox("Select Summary Language:", language_options, index=0)  # Default is "English"
+
+   # Display selected language in the main UI
+   st.write(f"### Selected Language: {selected_language}")
+
+   
+
+
 
 generic_url=st.text_input("URL", label_visibility= "collapsed")
 ## Gemma model
@@ -36,7 +46,7 @@ llm =ChatGroq(model="gemma2-9b-it", groq_api_key=groq_api_key)
     
 def extract_video_id(url):
     # Regular expression to match YouTube video ID
-    pattern = r'(?:youtube\.com\/(?:v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})'
+    pattern = r'(?:youtube\.com\/(?:v\/|watch\?v=|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})'
     
     # Search for the video ID in the URL
     match = re.search(pattern, url)
@@ -47,7 +57,7 @@ def extract_video_id(url):
     
 def get_video_transcript(video_id):
         # Fetch the transcript for the video
-        transcript = YouTubeTranscriptApi.get_transcript(video_id,languages=['hi','en'])
+        transcript = YouTubeTranscriptApi.get_transcript(video_id,languages=['hi','en','pt'])
 
          # Convert the transcript to a string format (plain text)
         transcript_text = ""
@@ -57,29 +67,23 @@ def get_video_transcript(video_id):
         return transcript_text.strip()  # Remove any trailing spaces  
 
 
-def get_summarization_with_map_reduce(docs):
+def get_summarization_with_map_reduce(docs, selected_language="English", words="500"):
     try:
         final_doc = RecursiveCharacterTextSplitter(chunk_size=6000,chunk_overlap=100).split_documents(docs)
         print(final_doc)
-        chunks_prompt="""
-            Please summarize the below speech:
-            Speech:`{text}'
+        chunks_prompt=f"""
+            Please summarize the below speech in {selected_language} in  {words}:
+            Speech:`{{text}}'
             Summary:
             """
         map_prompt_template=PromptTemplate(input_variables=['text'],
                                     template=chunks_prompt) 
-        prompt_template="""
-        Provide a summary of the following content in points having 500 words:
-        Content:{text}
+        prompt_template=f"""
+        Provide a summary of the following content in points having {words} words in {selected_language}:
+        Content:{{text}}
 
         """  
-        #not using for now but keeping as it is   
-        final_prompt='''
-            Provide the final summary of the entire speech with these important points.
-            Add a Motivation Title,Start the precise summary with an introduction and provide the summary in number 
-            points for the speech.
-            Speech:{text}
-            '''
+        
         final_prompt_template=PromptTemplate(input_variables=['text'],template=prompt_template)
         summary_chain = load_summarize_chain(
             llm = llm,
@@ -93,16 +97,16 @@ def get_summarization_with_map_reduce(docs):
         print(f"Error: {e}")  
 
 
-def get_summarization_with_stuff(docs):
+def get_summarization_with_stuff(docs, selected_language="English"):
     try:
         prompt_template="""
-        Provide a summary of the following content in points having 500 words:
+        Provide a summary of the following content in points having 500 words in  {language}:
         Content:{text}
 
         """
-        prompt=PromptTemplate(template=prompt_template,input_variables=["text"])    
+        prompt=PromptTemplate(template=prompt_template,input_variables=["text","language"])    
         chain=load_summarize_chain(llm,chain_type="stuff",prompt=prompt)
-        return chain.invoke(docs)
+        return chain.invoke(docs,selected_language)
     except Exception as e:
         print(f"Error: {e}")   
 
@@ -137,10 +141,10 @@ if st.button("Summarize the Content from YT or Website"):
                 ##chain for summerisation
                 
                 if(count_number_of_tokens(docs[0].page_content) < 6000):
-                   output = get_summarization_with_stuff(docs)
+                   output = get_summarization_with_stuff(docs,selected_language,words)
                    print("stuff")
                 else:
-                    output =get_summarization_with_map_reduce(docs)
+                    output =get_summarization_with_map_reduce(docs,selected_language,words)
                     print("map_reduce")
 
                 st.success(output)   
